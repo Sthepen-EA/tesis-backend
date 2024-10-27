@@ -1,3 +1,7 @@
 fastapi
 uvicorn
 pymongo[svr]
+numpy
+xgboost
+scikit-learn
+pandas

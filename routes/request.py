@@ -1,12 +1,9 @@
-from fastapi import APIRouter
-from fastapi import HTTPException
+from fastapi import APIRouter, HTTPException
 from models.request import Request
-from config.database import request_collection
-from config.database import cost_estimation_collection
+from config.database import request_collection, cost_estimation_collection
 from schema.request import list_serializer
 from bson import ObjectId
 from bson.errors import InvalidId
-
 
 router = APIRouter()
 
@@ -19,9 +16,10 @@ async def post_request(request: Request):
     # Convertimos todo el objeto Request y sus campos anidados a un diccionario
     request_data = request.dict()
     
-    # Si tienes un campo Prediction anidado, lo conviertes a diccionario también
+    # Convertir el objeto Prediction anidado a diccionario
     request_data['change_prediction_object'] = request.change_prediction_object.dict()
 
+    # Insertar la solicitud en la colección
     request_collection.insert_one(request_data)
     return {"message": "Request created successfully"}
 
@@ -38,27 +36,34 @@ async def put_request(id: str, request: Request):
             # Intentamos convertir prediction_id a ObjectId
             prediction_object_id = ObjectId(prediction_id)
         except InvalidId:
-            # Si el prediction_id no es válido, devolvemos un error 400
             raise HTTPException(status_code=400, detail="Invalid prediction_id format")
         
         # Actualizamos la estimación de costos
-        cost_estimation_collection.find_one_and_update(
+        result = cost_estimation_collection.find_one_and_update(
             {"_id": prediction_object_id}, 
             {"$set": cost_prediction}
         )
+        
+        if result is None:
+            raise HTTPException(status_code=404, detail="Cost estimation not found")
 
     # Convertir Prediction a diccionario antes de actualizar el request
     request_data['change_prediction_object'] = request.change_prediction_object.dict()
 
     # Actualizamos la solicitud en la colección de requests
-    request_collection.find_one_and_update(
+    result = request_collection.find_one_and_update(
         {"_id": ObjectId(id)}, 
         {"$set": request_data}
     )
     
+    if result is None:
+        raise HTTPException(status_code=404, detail="Request not found")
+
     return {"message": "Request and cost estimation updated successfully"}
 
 @router.delete("/request/{id}")
 async def delete_request(id: str):
-    request_collection.find_one_and_delete({"_id": ObjectId(id)})
+    result = request_collection.find_one_and_delete({"_id": ObjectId(id)})
+    if result is None:
+        raise HTTPException(status_code=404, detail="Request not found")
     return {"message": "Request deleted successfully"}
