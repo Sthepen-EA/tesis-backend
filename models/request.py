@@ -2,13 +2,12 @@ from pydantic import BaseModel
 from models.prediction import Prediction
 
 class Request(BaseModel):
-    title: str
-    description: str
-    status: bool
-    user_id: str
-    admin_id: str
     prediction_id: str
-    change_prediction_object: Prediction
+    request_type: str
+    user_id: str
+    date: str
+    prediction_object: Prediction
+    status: bool
 
     # Configuración para permitir convertir a dict recursivamente
     class Config:

@@ -17,7 +17,7 @@ async def post_request(request: Request):
     request_data = request.dict()
     
     # Convertir el objeto Prediction anidado a diccionario
-    request_data['change_prediction_object'] = request.change_prediction_object.dict()
+    request_data['prediction_object'] = request.prediction_object.dict()
 
     # Insertar la solicitud en la colección
     request_collection.insert_one(request_data)
@@ -27,10 +27,10 @@ async def post_request(request: Request):
 async def put_request(id: str, request: Request):
     request_data = request.dict()
 
-    # Si el status está en True, actualizamos la estimación de costos
+    # Si el status está en True, procedemos con la acción de "Eliminación" o "Edición"
     if request.status:
         prediction_id = request.prediction_id
-        cost_prediction = request.change_prediction_object.dict()
+        cost_prediction = request.prediction_object.dict()
 
         try:
             # Intentamos convertir prediction_id a ObjectId
@@ -38,17 +38,24 @@ async def put_request(id: str, request: Request):
         except InvalidId:
             raise HTTPException(status_code=400, detail="Invalid prediction_id format")
         
-        # Actualizamos la estimación de costos
-        result = cost_estimation_collection.find_one_and_update(
-            {"_id": prediction_object_id}, 
-            {"$set": cost_prediction}
-        )
+        # Verificar el tipo de solicitud
+        if request.request_type == "Eliminación":
+            # Eliminamos el registro de estimación de costos
+            result = cost_estimation_collection.find_one_and_delete({"_id": prediction_object_id})
+            if result is None:
+                raise HTTPException(status_code=404, detail="Cost estimation not found")
         
-        if result is None:
-            raise HTTPException(status_code=404, detail="Cost estimation not found")
+        elif request.request_type == "Edición":
+            # Actualizamos el registro de estimación de costos
+            result = cost_estimation_collection.find_one_and_update(
+                {"_id": prediction_object_id}, 
+                {"$set": cost_prediction}
+            )
+            if result is None:
+                raise HTTPException(status_code=404, detail="Cost estimation not found")
 
     # Convertir Prediction a diccionario antes de actualizar el request
-    request_data['change_prediction_object'] = request.change_prediction_object.dict()
+    request_data['prediction_object'] = request.prediction_object.dict()
 
     # Actualizamos la solicitud en la colección de requests
     result = request_collection.find_one_and_update(
