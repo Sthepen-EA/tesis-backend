@@ -5,7 +5,6 @@ from config.database import user_collection
 from schema.user import list_serializer
 from bson import ObjectId
 
-
 router = APIRouter()
 
 @router.get("/user/")
@@ -14,15 +13,20 @@ async def get_users():
     
 @router.post("/user/create")
 async def post_user(user: User):
-    user_collection.insert_one(dict(user))  
+    # Insertar el usuario y obtener el ID del usuario recién creado
+    result = user_collection.insert_one(dict(user))
+    user_id = str(result.inserted_id)  # Convertir ObjectId a cadena para enviar como respuesta
+    return {"user_id": user_id}  # Retornar el ID del usuario en el response body
 
 @router.put("/user/{id}")
 async def put_user(id: str, user: User):
     user_collection.find_one_and_update({"_id": ObjectId(id)}, {"$set": dict(user)})
+    return {"message": "User updated successfully"}
 
 @router.delete("/user/{id}")
 async def delete_user(id: str):
     user_collection.find_one_and_delete({"_id": ObjectId(id)})
+    return {"message": "User deleted successfully"}
 
 @router.post("/login")
 async def post_user(user: UserLogin):
