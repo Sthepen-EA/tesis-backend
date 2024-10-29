@@ -7,7 +7,7 @@ class Request(BaseModel):
     user_id: str
     date: str
     prediction_object: Prediction
-    status: bool
+    status: str
 
     # Configuración para permitir convertir a dict recursivamente
     class Config:

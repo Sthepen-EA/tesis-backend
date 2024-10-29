@@ -27,29 +27,27 @@ async def post_request(request: Request):
 async def put_request(id: str, request: Request):
     request_data = request.dict()
 
-    # Si el status está en True, procedemos con la acción de "Eliminación" o "Edición"
-    if request.status:
+    # Verificar si el estado es "Aprobado"
+    if request.status == "Aprobado":
         prediction_id = request.prediction_id
-        cost_prediction = request.prediction_object.dict()
+        prediction_data = request.prediction_object.dict()
 
         try:
-            # Intentamos convertir prediction_id a ObjectId
             prediction_object_id = ObjectId(prediction_id)
         except InvalidId:
             raise HTTPException(status_code=400, detail="Invalid prediction_id format")
         
-        # Verificar el tipo de solicitud
         if request.request_type == "Eliminación":
-            # Eliminamos el registro de estimación de costos
+            # Eliminar la estimación de costos si el tipo de solicitud es "Eliminación"
             result = cost_estimation_collection.find_one_and_delete({"_id": prediction_object_id})
             if result is None:
                 raise HTTPException(status_code=404, detail="Cost estimation not found")
         
         elif request.request_type == "Edición":
-            # Actualizamos el registro de estimación de costos
+            # Actualizar la estimación de costos si el tipo de solicitud es "Edición"
             result = cost_estimation_collection.find_one_and_update(
                 {"_id": prediction_object_id}, 
-                {"$set": cost_prediction}
+                {"$set": prediction_data}
             )
             if result is None:
                 raise HTTPException(status_code=404, detail="Cost estimation not found")
@@ -57,7 +55,7 @@ async def put_request(id: str, request: Request):
     # Convertir Prediction a diccionario antes de actualizar el request
     request_data['prediction_object'] = request.prediction_object.dict()
 
-    # Actualizamos la solicitud en la colección de requests
+    # Actualizar la solicitud en la colección de requests
     result = request_collection.find_one_and_update(
         {"_id": ObjectId(id)}, 
         {"$set": request_data}
