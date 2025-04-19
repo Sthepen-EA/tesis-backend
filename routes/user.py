@@ -33,8 +33,12 @@ async def post_user(user: UserLogin):
     db_user = get_user_by_credentials(user.email, user.password)
     
     if db_user:
-        user_id = str(db_user["_id"])  # Extraer el ID del usuario y convertirlo a cadena
-        return {"success": True, "message": "Login successful", "user_id": user_id}
+        db_user["_id"] = str(db_user["_id"])  # Convertir ObjectId a string
+        return {
+            "success": True,
+            "message": "Login successful",
+            "user": db_user  # Devolver el objeto completo
+        }
     else:
         return {"success": False, "message": "Invalid email or password"}
     
