@@ -9,6 +9,7 @@ class PredictionInput (BaseModel):
     year: int
 
 class Prediction (BaseModel):
+    user_id: str
     input_list: PredictionInput
     total_Cost: float
 

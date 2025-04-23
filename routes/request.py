@@ -25,6 +25,10 @@ async def post_request(request: Request):
     request_collection.insert_one(request_data)
     return {"message": "Request created successfully"}
 
+@router.get("/request-by-user/{user_id}")
+async def get_requests_by_user(user_id: str):
+    return list_serializer(request_collection.find({"user_id": user_id}))
+
 @router.put("/request/{id}")
 async def put_request(id: str, request: Request):
     request_data = request.dict()

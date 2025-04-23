@@ -20,6 +20,11 @@ with open('resources/preprocesador_fs.pkl', 'rb') as file:
 async def get_predictions():
     return list_serializer(cost_estimation_collection.find())
 
+@router.get("/estimation-by-user/{user_id}")
+async def get_predictions_by_user(user_id: str):
+    return list_serializer(cost_estimation_collection.find({"user_id": user_id}))
+
+
 @router.post("/estimation/predict")
 async def post_predict(cost_prediction: PredictionInput):
     # Crear un DataFrame con los datos de entrada
