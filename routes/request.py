@@ -10,7 +10,7 @@ router = APIRouter()
 
 @router.get("/request/")
 async def get_requests():
-    return list_serializer(request_collection.find())
+    return list_serializer(request_collection.find().sort("_id", -1))
 
 @router.post("/request/create")
 async def post_request(request: Request):
@@ -27,7 +27,7 @@ async def post_request(request: Request):
 
 @router.get("/request-by-user/{user_id}")
 async def get_requests_by_user(user_id: str):
-    return list_serializer(request_collection.find({"user_id": user_id}))
+    return list_serializer(request_collection.find({"user_id": user_id}).sort("_id", -1))
 
 @router.put("/request/{id}")
 async def put_request(id: str, request: Request):
