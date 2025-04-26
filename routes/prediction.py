@@ -18,7 +18,10 @@ with open('resources/preprocesador_fs.pkl', 'rb') as file:
 
 @router.get("/estimation/")
 async def get_predictions():
-    return list_serializer(cost_estimation_collection.find())
+    # Ordenar por _id descendente para obtener el último primero
+    resultados = cost_estimation_collection.find().sort("_id", -1)
+    return list_serializer(resultados)
+
 
 @router.get("/estimation-by-user/{user_id}")
 async def get_predictions_by_user(user_id: str):
@@ -26,7 +29,7 @@ async def get_predictions_by_user(user_id: str):
 
 
 @router.post("/estimation/predict")
-async def post_predict(cost_prediction: PredictionInput):
+async def post_predict_only(cost_prediction: PredictionInput):
     # Crear un DataFrame con los datos de entrada
     example_input = pd.DataFrame({
         'StructureType': [cost_prediction.structureType],
@@ -47,23 +50,24 @@ async def post_predict(cost_prediction: PredictionInput):
         # Convertir la predicción a la escala original
         prediccion = np.exp(prediccion_log)
 
+        return {
+            "predicted_cost": float(prediccion[0])
+        }
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error en la predicción: {e}")
 
-    # Crear la instancia de Prediction para almacenar en la base de datos
-    new_prediction = Prediction(
-        input_list=cost_prediction,
-        total_Cost=float(prediccion[0])
-    )
+@router.post("/estimation/save")
+async def post_save_prediction(prediction: Prediction):
+    try:
+        result = cost_estimation_collection.insert_one(prediction.dict())
+        return {
+            "message": "Predicción guardada correctamente",
+            "prediction_id": str(result.inserted_id)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"No se pudo guardar la predicción: {e}")
 
-    # Guardar la predicción en la base de datos
-    result = cost_estimation_collection.insert_one(new_prediction.dict())
-
-    # Devolver la predicción junto con el ID generado
-    return {
-        "prediction_id": str(result.inserted_id),
-        "predicted_cost": float(prediccion[0])
-    }
 
 @router.put("/estimation/{id}")
 async def put_predict(id: str, cost_prediction: Prediction):
