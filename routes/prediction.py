@@ -25,7 +25,7 @@ async def get_predictions():
 
 @router.get("/estimation-by-user/{user_id}")
 async def get_predictions_by_user(user_id: str):
-    return list_serializer(cost_estimation_collection.find({"user_id": user_id}))
+    return list_serializer(cost_estimation_collection.find({"user_id": user_id}).sort("_id", -1))
 
 
 @router.post("/estimation/predict")
