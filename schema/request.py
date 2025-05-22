@@ -5,6 +5,7 @@ def individual_serializer(request) -> dict:
         "prediction_id": request["prediction_id"],
         "request_type": request["request_type"],
         "user_id": request["user_id"],
+        "user_name": request["user_name"],
         "date": request["date"],
         "original_prediction_object": {
             **request["original_prediction_object"],
