@@ -13,6 +13,7 @@ def individual_serializer(request) -> dict:
         } if request.get("original_prediction_object") else None,
         "new_prediction_object": request["new_prediction_object"],
         "status": request["status"],
+        "project_id": request["project_id"],
     }
 
 def list_serializer(requests) -> list:

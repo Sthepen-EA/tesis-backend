@@ -12,6 +12,9 @@ class Prediction (BaseModel):
     user_id: str
     input_list: PredictionInput
     total_Cost: float
+    project_id: str
+    abutmentTypeES: str
+    structureTypeES: str
 
     class Config:
         arbitrary_types_allowed = True

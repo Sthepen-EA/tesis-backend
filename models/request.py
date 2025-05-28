@@ -10,6 +10,7 @@ class Request(BaseModel):
     original_prediction_object: Prediction
     new_prediction_object: Prediction
     status: str
+    project_id: str
 
     # Configuración para permitir convertir a dict recursivamente
     class Config:
