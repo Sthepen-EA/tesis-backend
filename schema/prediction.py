@@ -8,6 +8,7 @@ def individual_serializer(cost_prediction) -> dict:
         "project_id": cost_prediction["project_id"],
         "abutmentTypeES": cost_prediction["abutmentTypeES"],
         "structureTypeES": cost_prediction["structureTypeES"],
+        "hasRequest": cost_prediction["hasRequest"],
     }
 
 def list_serializer(cost_predictions) -> list:

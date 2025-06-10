@@ -15,6 +15,7 @@ class Prediction (BaseModel):
     project_id: str
     abutmentTypeES: str
     structureTypeES: str
+    hasRequest: bool
 
     class Config:
         arbitrary_types_allowed = True

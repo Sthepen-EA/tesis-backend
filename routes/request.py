@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException
 from models.request import Request
-from models.prediction import Prediction
 from config.database import request_collection, cost_estimation_collection
 from schema.request import list_serializer
 from bson import ObjectId
@@ -14,16 +13,32 @@ async def get_requests():
 
 @router.post("/request/create")
 async def post_request(request: Request):
-    # Convertimos todo el objeto Request y sus campos anidados a un diccionario
+    prediction_id = request.prediction_id
+
+    # Buscar la predicción original en la base de datos
+    prediction = cost_estimation_collection.find_one({"_id": ObjectId(prediction_id)})
+
+    if not prediction:
+        raise HTTPException(status_code=404, detail="Prediction not found")
+
+    if prediction.get("hasRequest", False):
+        raise HTTPException(status_code=400, detail="A request has already been created for this prediction")
+
+    # Convertir los objetos anidados a dict
     request_data = request.dict()
-    
-    # Convertir los objetos Prediction anidados a diccionarios
     request_data['original_prediction_object'] = request.original_prediction_object.dict()
     request_data['new_prediction_object'] = request.new_prediction_object.dict()
 
     # Insertar la solicitud en la colección
     request_collection.insert_one(request_data)
-    return {"message": "Request created successfully"}
+
+    # Actualizar la predicción y marcarla como solicitada
+    cost_estimation_collection.update_one(
+        {"_id": ObjectId(request.prediction_id)},
+        {"$set": {"hasRequest": True}}
+    )
+
+    return {"message": "Request created and prediction updated successfully"}
 
 @router.get("/request-by-user/{user_id}")
 async def get_requests_by_user(user_id: str):
@@ -33,48 +48,47 @@ async def get_requests_by_user(user_id: str):
 async def put_request(id: str, request: Request):
     request_data = request.dict()
 
-    # Verificar si el estado es "Aprobado" para proceder con la actualización o eliminación
-    if request.status == "Aprobado":
-        # Buscar y guardar el objeto de predicción original
-        prediction_id = request.prediction_id
-        try:
-            # Intentamos convertir prediction_id a ObjectId
-            prediction_object_id = ObjectId(prediction_id)
-        except InvalidId:
-            raise HTTPException(status_code=400, detail="Invalid prediction_id format")
+    prediction_id = request.prediction_id
+    try:
+        prediction_object_id = ObjectId(prediction_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid prediction_id format")
 
-        # Obtener la predicción original desde la colección
-        original_prediction = cost_estimation_collection.find_one({"_id": prediction_object_id})
-        if original_prediction is None:
-            raise HTTPException(status_code=404, detail="Original prediction not found")
+    # Obtener la predicción original
+    original_prediction = cost_estimation_collection.find_one({"_id": prediction_object_id})
+    if original_prediction is None:
+        raise HTTPException(status_code=404, detail="Original prediction not found")
 
-        # Guardar el objeto original en `original_prediction_object`
-        request_data['original_prediction_object'] = original_prediction
+    request_data['original_prediction_object'] = original_prediction
 
-        # Verificar si el `request_type` es "Edición" o "Eliminación"
-        if request.request_type == "Edición":
-            # Convertir `new_prediction_object` a diccionario para actualizarlo
-            new_prediction_data = request.new_prediction_object.dict()
+    # Si fue aprobado y es edición, actualiza
+    if request.status == "Aprobado" and request.request_type == "Edición":
+        new_prediction_data = request.new_prediction_object.dict()
+        cost_estimation_collection.find_one_and_update(
+            {"_id": prediction_object_id}, 
+            {"$set": new_prediction_data}
+        )
 
-            # Actualizar la predicción en la colección de estimaciones de costos
-            cost_estimation_collection.find_one_and_update(
-                {"_id": prediction_object_id}, 
-                {"$set": new_prediction_data}
-            )
+    # Si fue aprobado y es eliminación, elimina
+    elif request.status == "Aprobado" and request.request_type == "Eliminación":
+        cost_estimation_collection.find_one_and_delete({"_id": prediction_object_id})
 
-        elif request.request_type == "Eliminación":
-            # Eliminar la predicción en la colección de estimaciones de costos
-            cost_estimation_collection.find_one_and_delete({"_id": prediction_object_id})
+    # ✅ En todos los casos de edición o eliminación (aprobado o rechazado), liberar el bloqueo
+    if request.request_type in ["Edición", "Eliminación"]:
+        cost_estimation_collection.update_one(
+            {"_id": prediction_object_id},
+            {"$set": {"hasRequest": False}}
+        )
 
-    # Guardar el `new_prediction_object` en la solicitud
+    # Actualizar el objeto de la solicitud con los nuevos datos
     request_data['new_prediction_object'] = request.new_prediction_object.dict()
 
-    # Actualizamos la solicitud en la colección de requests
+    # Actualizar el request
     result = request_collection.find_one_and_update(
         {"_id": ObjectId(id)}, 
         {"$set": request_data}
     )
-    
+
     if result is None:
         raise HTTPException(status_code=404, detail="Request not found")
 
